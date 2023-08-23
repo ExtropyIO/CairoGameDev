@@ -22,3 +22,11 @@ struct Book{
     player: ContractAddress,
     title: felt252, 
 }
+
+#[derive(Component, Copy, Drop, Serde, SerdeLen)]
+struct Backpack{
+    #[key]
+    player: ContractAddress,
+    key: bool,
+    note: bool, 
+}
