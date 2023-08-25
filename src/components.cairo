@@ -6,6 +6,8 @@ struct Door {
     #[key]
     player: ContractAddress,
     locked: bool,
+    
+
 }
 
 #[derive(Component, Copy, Drop, Serde, SerdeLen)]
