@@ -1,13 +1,24 @@
+use std::thread::spawn;
+
 use bevy::{
     input::common_conditions::input_toggle_active, prelude::*, render::camera::ScalingMode,
 };
 use bevy_inspector_egui::prelude::ReflectInspectorOptions;
 use bevy_inspector_egui::{egui::Key, quick::WorldInspectorPlugin, InspectorOptions};
+use character::CharacterPlugin;
+use serde::de;
 use ui::GameUI;
+
+#[derive(Component, InspectorOptions, Default, Reflect)]
+#[reflect(Component)]
+pub struct Player {
+    pub speed: f32,
+}
 
 #[derive(Resource)]
 pub struct MovesRemaining(pub f32);
 
+mod character;
 mod ui;
 
 fn main() {
@@ -18,7 +29,7 @@ fn main() {
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         title: "Escape from Cairo".into(),
-                        resolution: (640.0, 480.0).into(),
+                        resolution: (640.0, 320.0).into(),
                         resizable: false,
                         ..default()
                     }),
@@ -31,7 +42,9 @@ fn main() {
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
         )
         .add_plugins(GameUI)
+        .add_plugins(CharacterPlugin)
         .add_systems(Startup, setup)
+        .add_systems(Update, _)
         .run();
 }
 
@@ -45,4 +58,20 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     };
 
     commands.spawn(camera);
+
+    spawn_room(&mut commands, &asset_server);
+}
+
+fn spawn_room(commands: &mut Commands, asset_server: &Res<AssetServer>) {
+    // loading the asset
+    let texture = asset_server.load("room_background.png");
+
+    commands.spawn((
+        SpriteBundle {
+            transform: Transform::from_xyz(640.0, 320.0, 0.0),
+            texture,
+            ..default()
+        },
+        Name::new("Background"),
+    ));
 }
