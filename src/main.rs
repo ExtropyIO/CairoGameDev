@@ -6,6 +6,7 @@ use bevy::{
 use bevy_inspector_egui::prelude::ReflectInspectorOptions;
 use bevy_inspector_egui::{egui::Key, quick::WorldInspectorPlugin, InspectorOptions};
 use character::CharacterPlugin;
+use room::RoomPlugin;
 use serde::de;
 use ui::GameUI;
 
@@ -19,8 +20,8 @@ pub struct Player {
 pub struct MovesRemaining(pub f32);
 
 mod character;
+mod room;
 mod ui;
-
 fn main() {
     App::new()
         .add_plugins(
@@ -43,8 +44,8 @@ fn main() {
         )
         .add_plugins(GameUI)
         .add_plugins(CharacterPlugin)
+        // .add_plugins(RoomPlugin)
         .add_systems(Startup, setup)
-        .add_systems(Update, _)
         .run();
 }
 
@@ -62,13 +63,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     spawn_room(&mut commands, &asset_server);
 }
 
-fn spawn_room(commands: &mut Commands, asset_server: &Res<AssetServer>) {
-    // loading the asset
+fn spawn_room(commands: &mut Commands, asset_server: &AssetServer) {
     let texture = asset_server.load("room_background.png");
 
     commands.spawn((
         SpriteBundle {
-            transform: Transform::from_xyz(640.0, 320.0, 0.0),
+            transform: Transform::from_xyz(0.0, 0.0, -10.0).with_scale(Vec3::splat(0.5)),
             texture,
             ..default()
         },

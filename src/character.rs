@@ -55,9 +55,9 @@ fn setup(
     let animation_indices = AnimationIndices { first: 1, last: 5 };
     commands.spawn((
         SpriteSheetBundle {
+            transform: Transform::from_xyz(0.0, -27.5, 10.0),
             texture_atlas: texture_atlas_handle,
             sprite: TextureAtlasSprite::new(animation_indices.first),
-            // transform: Transform::from_scale(Vec3::splat(6.0)),
             ..default()
         },
         animation_indices,

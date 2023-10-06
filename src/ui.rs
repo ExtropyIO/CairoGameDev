@@ -18,7 +18,7 @@ fn spawn_game_ui(mut commands: Commands) {
             NodeBundle {
                 style: Style {
                     width: Val::Percent(100.0),
-                    height: Val::Percent(10.0),
+                    height: Val::Percent(20.0),
                     align_items: AlignItems::Center,
                     padding: UiRect::all(Val::Px(10.0)),
                     ..default()
