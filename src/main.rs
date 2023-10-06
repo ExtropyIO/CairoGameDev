@@ -44,7 +44,7 @@ fn main() {
         )
         .add_plugins(GameUI)
         .add_plugins(CharacterPlugin)
-        // .add_plugins(RoomPlugin)
+        .add_plugins(RoomPlugin)
         .add_systems(Startup, setup)
         .run();
 }
