@@ -1,10 +1,13 @@
+use crate::{Object, Player};
 use bevy::prelude::*;
 use bevy::sprite::*;
+
 pub struct RoomPlugin;
 
 impl Plugin for RoomPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup);
+        app.add_systems(Startup, setup)
+            .add_systems(Update, highlight_object);
     }
 }
 
@@ -23,7 +26,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             ..default()
         },
-        Name::new("Object_Bookcase"),
+        Object {
+            name: "Bookcase".to_string(),
+        },
+        Name::new("Object"),
     ));
 
     let texture = asset_server.load("object_cupboard.png");
@@ -38,7 +44,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             ..default()
         },
-        Name::new("Object_Cupboard"),
+        Object {
+            name: "Cupboard".to_string(),
+        },
+        Name::new("Object"),
     ));
 
     let texture = asset_server.load("object_door.png");
@@ -53,7 +62,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             ..default()
         },
-        Name::new("Object_Door"),
+        Object {
+            name: "Door".to_string(),
+        },
+        Name::new("Object"),
     ));
 
     let texture = asset_server.load("object_table.png");
@@ -68,7 +80,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             ..default()
         },
-        Name::new("Object_Table"),
+        Object {
+            name: "Table".to_string(),
+        },
+        Name::new("Object"),
     ));
 
     let texture = asset_server.load("object_window.png");
@@ -83,7 +98,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             ..default()
         },
-        Name::new("Object_Window"),
+        Object {
+            name: "Window".to_string(),
+        },
+        Name::new("Object"),
     ));
 
     let texture = asset_server.load("object_painting.png");
@@ -98,6 +116,34 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             ..default()
         },
-        Name::new("Object_Painting"),
+        Object {
+            name: "Painting".to_string(),
+        },
+        Name::new("Object"),
     ));
+}
+
+fn highlight_object(
+    mut commands: Commands,
+    mut objects: Query<((Entity, &Transform), With<Object>)>,
+    mut characters: Query<(&Transform, &Player)>,
+) {
+    let character_transform = characters.single_mut();
+
+    for ((object_entity, object_transform), mut object) in &mut objects {
+        let object_size = object_transform.scale.truncate();
+
+        let object_min = object_transform.translation.truncate() - object_size / 2.0;
+        let object_max = object_transform.translation.truncate() + object_size / 2.0;
+
+        let character_x = character_transform.0.translation.x;
+
+        if character_x > object_min.x && character_x < object_max.x {
+            println!("Object is near player");
+            println!("{}", object_min.x);
+            println!("{}", object_max.x);
+            // object_entity.apply(value)
+            // commands.entity(object_entity).add(Color::WHITE);
+        }
+    }
 }

@@ -16,6 +16,12 @@ pub struct Player {
     pub speed: f32,
 }
 
+#[derive(Component, InspectorOptions, Default, Reflect)]
+#[reflect(Component)]
+pub struct Object {
+    pub name: String,
+}
+
 #[derive(Resource)]
 pub struct MovesRemaining(pub f32);
 
