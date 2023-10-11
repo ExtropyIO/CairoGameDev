@@ -1,33 +1,14 @@
-use std::thread::spawn;
-
 use bevy::{
     input::common_conditions::input_toggle_active, prelude::*, render::camera::ScalingMode,
 };
+use bevy_asset_loader::loading_state::LoadingStateAppExt;
 use bevy_inspector_egui::prelude::ReflectInspectorOptions;
 use bevy_inspector_egui::{egui::Key, quick::WorldInspectorPlugin, InspectorOptions};
-use character::CharacterPlugin;
-use room::RoomPlugin;
-use serde::de;
-use ui::GameUI;
+use game_demo::{
+    character::CharacterPlugin, configs::*, dojo::DojoPlugin, resources::MovesRemaining,
+    room::RoomPlugin, ui::GameUI,
+};
 
-#[derive(Component, InspectorOptions, Default, Reflect)]
-#[reflect(Component)]
-pub struct Player {
-    pub speed: f32,
-}
-
-#[derive(Component, InspectorOptions, Default, Reflect)]
-#[reflect(Component)]
-pub struct Object {
-    pub name: String,
-}
-
-#[derive(Resource)]
-pub struct MovesRemaining(pub f32);
-
-mod character;
-mod room;
-mod ui;
 fn main() {
     App::new()
         .add_plugins(
@@ -51,6 +32,7 @@ fn main() {
         .add_plugins(GameUI)
         .add_plugins(CharacterPlugin)
         .add_plugins(RoomPlugin)
+        .add_plugins(DojoPlugin)
         .add_systems(Startup, setup)
         .run();
 }

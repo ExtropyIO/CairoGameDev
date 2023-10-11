@@ -1,8 +1,7 @@
-use std::process::CommandArgs;
-
-use crate::Player;
+use bevy_inspector_egui::InspectorOptions;
 
 use bevy::prelude::*;
+
 pub struct CharacterPlugin;
 
 impl Plugin for CharacterPlugin {
@@ -11,6 +10,11 @@ impl Plugin for CharacterPlugin {
             .add_systems(Update, (animate_sprite, character_movement))
             .register_type::<Player>(); // for new types
     }
+}
+#[derive(Component, InspectorOptions, Default, Reflect)]
+#[reflect(Component)]
+pub struct Player {
+    pub speed: f32,
 }
 
 #[derive(Component)]
