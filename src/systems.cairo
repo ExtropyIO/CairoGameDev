@@ -13,7 +13,7 @@ mod create {
     #[event]
     use dojo_examples::events::{Event, ObjectData, GameState};
 
-    fn execute(ctx: Context, start_time: u64, turns_remaining: usize,) {
+    fn execute(ctx: Context, start_time: u64, turns_remaining: u64,) {
 
         let game_id = ctx.world.uuid();
 

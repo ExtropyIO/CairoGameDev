@@ -8,7 +8,7 @@ struct Game {
     #[key]
     game_id: u32,
     start_time: u64,
-    turns_remaining: usize,
+    turns_remaining: u64,
     is_finished: bool,
     creator: ContractAddress,
 }

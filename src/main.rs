@@ -26,13 +26,13 @@ fn main() {
                 .build(),
         )
         .insert_resource(MovesRemaining(10.0))
+        .add_plugins(DojoPlugin)
         .add_plugins(
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
         )
         .add_plugins(GameUI)
         .add_plugins(CharacterPlugin)
         .add_plugins(RoomPlugin)
-        .add_plugins(DojoPlugin)
         .add_systems(Startup, setup)
         .run();
 }

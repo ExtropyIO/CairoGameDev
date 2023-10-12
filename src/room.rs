@@ -1,4 +1,6 @@
 use crate::character::Player;
+use crate::resources::InteractObjectState;
+use bevy::log;
 use bevy::prelude::*;
 use bevy::sprite::*;
 use bevy_inspector_egui::InspectorOptions;
@@ -134,6 +136,7 @@ fn highlight_object(
     mut objects: Query<((Entity, &Transform), With<Object>)>,
     mut characters: Query<(&Transform, &Player)>,
     input: Res<Input<KeyCode>>,
+    interact_object: Res<InteractObjectState>,
 ) {
     let character_transform = characters.single_mut();
 
@@ -148,11 +151,14 @@ fn highlight_object(
 
         if character_x > object_min && character_x < object_max {
             if input.pressed(KeyCode::E) {
-                println!("Interacted with the object.")
+                println!("Interacted with the object.");
+                if let Err(e) = interact_object.try_send() {
+                    log::error!("Spawn players channel: {e}");
+                }
             }
-            println!("Object is near player");
-            println!("{}", object_min);
-            println!("{}", object_max);
+            // println!("Object is near player");
+            // println!("{}", object_min);
+            // println!("{}", object_max);
             // object_entity.apply(value)
             // commands.entity(object_entity).add(Color::WHITE);
         }

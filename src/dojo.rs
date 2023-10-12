@@ -1,4 +1,5 @@
 use crate::configs;
+use crate::resources::{InteractObjectState, StartGameCommand};
 use bevy::log;
 use bevy::prelude::*;
 use bevy_tokio_tasks::{TokioTasksPlugin, TokioTasksRuntime};
@@ -13,6 +14,11 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use url::Url;
+
+#[derive(Component)]
+pub struct GameData {
+    started: bool,
+}
 
 #[derive(Resource)]
 pub struct DojoEnv {
@@ -61,7 +67,10 @@ impl Plugin for DojoPlugin {
             // resources
             .insert_resource(DojoEnv::new(world_address, account))
             // starting system
-            .add_systems(Startup, (setup, spawn_object_thread))
+            .add_systems(
+                Startup,
+                (setup, spawn_object_thread, interact_object_thread),
+            )
             // update systems
             .add_systems(Update, sync_dojo_state);
     }
@@ -69,6 +78,7 @@ impl Plugin for DojoPlugin {
 
 fn setup(mut commands: Commands) {
     commands.spawn(DojoSyncTime::from_seconds(configs::DOJO_SYNC_INTERVAL));
+    commands.spawn(GameData { started: false });
 }
 
 #[derive(Component)]
@@ -84,11 +94,25 @@ impl DojoSyncTime {
     }
 }
 
-fn sync_dojo_state(mut dojo_sync_time: Query<&mut DojoSyncTime>, time: Res<Time>) {
+fn sync_dojo_state(
+    mut dojo_sync_time: Query<&mut DojoSyncTime>,
+    time: Res<Time>,
+    spawn_room: Res<StartGameCommand>,
+    mut game: Query<&mut GameData>,
+) {
     let mut dojo_time = dojo_sync_time.single_mut();
+    let mut game_state = game.single_mut();
 
     if dojo_time.timer.just_finished() {
         dojo_time.timer.reset();
+
+        // if not spawn the player by calling the channel
+        if game_state.started == false {
+            if let Err(e) = spawn_room.try_send() {
+                log::error!("Spawn room channel: {e}");
+            }
+            game_state.started = true;
+        }
     } else {
         dojo_time.timer.tick(time.delta());
     }
@@ -100,7 +124,7 @@ fn spawn_object_thread(
     mut commands: Commands,
 ) {
     let (tx, mut rx) = mpsc::channel::<()>(8);
-    commands.insert_resource(SpawnGameCommand(tx));
+    commands.insert_resource(StartGameCommand(tx));
 
     let account = env.account.clone();
     let world_address = env.world_address;
@@ -108,20 +132,15 @@ fn spawn_object_thread(
 
     let start_time: u64 = 123455;
     let turns_remaining: u64 = 10;
-
+    println!("HERE01");
     runtime.spawn_background_task(move |mut ctx| async move {
         let world = WorldContract::new(world_address, account.as_ref());
         let start_game_system = world.system("create", block_id).await.unwrap();
-
+        println!("HERE02");
         while let Some(_) = rx.recv().await {
+            println!("HERE03");
             match start_game_system
-                .execute(vec![
-                    start_time.into(), //
-                    turns_remaining.into(), //
-                                       // FieldElement::ZERO,
-                                       // FieldElement::ZERO,
-                                       // FieldElement::ZERO,
-                ])
+                .execute(vec![start_time.into(), turns_remaining.into()])
                 .await
             {
                 Ok(_) => {
@@ -132,18 +151,54 @@ fn spawn_object_thread(
                 }
                 Err(e) => {
                     log::error!("Run spawn_object system: {e}");
+                    println!("Error {}", e);
                 }
             }
         }
+        println!("Start Dojo Loop");
     });
 }
 
-#[derive(Resource)]
-pub struct SpawnGameCommand(mpsc::Sender<()>);
+fn interact_object_thread(
+    env: Res<DojoEnv>,
+    runtime: ResMut<TokioTasksRuntime>,
+    mut commands: Commands,
+) {
+    let (tx, mut rx) = mpsc::channel::<()>(8);
+    commands.insert_resource(InteractObjectState(tx));
 
-// TODO: derive macro?
-impl SpawnGameCommand {
-    pub fn try_send(&self) -> Result<(), mpsc::error::TrySendError<()>> {
-        self.0.try_send(())
-    }
+    let account = env.account.clone();
+    let world_address = env.world_address;
+    let block_id = env.block_id;
+
+    let game_id: u32 = 1;
+
+    runtime.spawn_background_task(move |mut ctx| async move {
+        let world = WorldContract::new(world_address, account.as_ref());
+        let interact_system = world.system("interact", block_id).await.unwrap();
+
+        while let Some(_) = rx.recv().await {
+            println!("Interact System - Triggered");
+            match interact_system
+                .execute(vec![
+                    game_id.into(),
+                    FieldElement::from_str("0x5061696e74696e67").unwrap(),
+                ])
+                .await
+            {
+                Ok(data) => {
+                    ctx.run_on_main_thread(move |_ctx| {
+                        println!("Object interacted");
+                        println!("{}", data.transaction_hash);
+                    })
+                    .await;
+                }
+                Err(e) => {
+                    log::error!("Run spawn_object system: {e}");
+                    println!("Error {}", e);
+                }
+            }
+        }
+        println!("Start Dojo Loop");
+    });
 }
