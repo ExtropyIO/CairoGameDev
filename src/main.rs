@@ -26,6 +26,7 @@ fn main() {
                 .build(),
         )
         .insert_resource(MovesRemaining(10.0))
+        .register_type::<MovesRemaining>()
         .add_plugins(DojoPlugin)
         .add_plugins(
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),

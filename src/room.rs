@@ -1,4 +1,5 @@
 use crate::character::Player;
+use crate::dojo::GameUpdate;
 use crate::resources::InteractObjectState;
 use bevy::log;
 use bevy::prelude::*;
@@ -150,7 +151,7 @@ fn highlight_object(
         let character_x = character_transform.0.translation.x;
 
         if character_x > object_min && character_x < object_max {
-            if input.pressed(KeyCode::E) {
+            if input.just_pressed(KeyCode::E) {
                 println!("Interacted with the object.");
                 if let Err(e) = interact_object.try_send() {
                     log::error!("Spawn players channel: {e}");

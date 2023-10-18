@@ -1,3 +1,3 @@
-mod systems;
-mod components;
+mod actions;
+mod models;
 mod events;

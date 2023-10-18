@@ -3,30 +3,30 @@ use core::debug::PrintTrait;
 use starknet::ContractAddress;
 
 
-#[derive(Component, Copy, Drop, Serde, SerdeLen)]
+#[derive(Model, Copy, Drop, Serde)]
 struct Game {
     #[key]
+    player: ContractAddress,
     game_id: u32,
     start_time: u64,
     turns_remaining: u64,
     is_finished: bool,
-    creator: ContractAddress,
 }
 
 
-#[derive(Component, Copy, Drop, Serde, SerdeLen)]
-struct Object{
+#[derive(Model, Copy, Drop, Serde)]
+struct Object {
     #[key]
     game_id: u32,
     #[key]
-    player_id: ContractAddress,
+    player: ContractAddress,
     #[key]
     object_id: felt252,
     description: felt252,
 }
 
-#[derive(Component, Copy, Drop, Serde, SerdeLen)]
-struct Door{
+#[derive(Model, Copy, Drop, Serde)]
+struct Door {
     #[key]
     game_id: u32,
     #[key]
@@ -42,7 +42,6 @@ impl ObjectImpl of ObjectTrait {
         objects.span()
     }
 }
-
 
 
 #[generate_trait]
