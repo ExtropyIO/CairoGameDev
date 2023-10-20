@@ -17,11 +17,10 @@ struct Game {
 #[derive(Model, Copy, Drop, Serde)]
 struct Object {
     #[key]
-    game_id: u32,
-    #[key]
     player: ContractAddress,
     #[key]
     object_id: felt252,
+    game_id: u32,
     description: felt252,
 }
 

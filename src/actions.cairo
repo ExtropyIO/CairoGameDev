@@ -47,27 +47,27 @@ mod actions {
                 world,
                 (
                     Object {
-                        game_id: game_id,
                         player: player,
                         object_id: 'Painting',
+                        game_id: game_id,
                         description: 'An intriguing painting.',
                     },
                     Object {
-                        game_id: game_id,
                         player: player,
                         object_id: 'Foto',
+                        game_id: game_id,
                         description: 'An egyptian cat.',
                     },
                     Object {
-                        game_id: game_id,
                         player: player,
                         object_id: 'Strange Amulet',
+                        game_id: game_id,
                         description: 'Until tomorrow',
                     },
                     Object {
-                        game_id: game_id,
                         player: player,
                         object_id: 'Book',
+                        game_id: game_id,
                         description: '1984',
                     },
                 )
@@ -76,7 +76,7 @@ mod actions {
             emit!(world, GameState { game_state: 'Game Initialized' });
         }
 
-        fn interact(self: @ContractState, object_id: felt252) {
+        fn interact(self: @ContractState, object_id: felt252)  {
             // Access the world dispatcher for reading.
             let world = self.world_dispatcher.read();
 
@@ -85,8 +85,8 @@ mod actions {
 
             let mut game = get!(world, player, (Game));
 
-            // can assert if game exists for the player 
-            assert(game.tick(), 'Cannot Progress');
+            // // can assert if game exists for the player 
+            // assert(game.tick(), 'Cannot Progress');
 
             if game.turns_remaining == 0 {
                 emit!(world, GameState { game_state: 'Game Over' });
@@ -104,6 +104,7 @@ mod actions {
             emit!(
                 world, ObjectData { object_id: object.object_id, description: object.description }
             );
+
         }
 
         fn escape(self: @ContractState, secret: felt252) {
@@ -131,11 +132,13 @@ mod actions {
                 set!(world, (game,));
 
                 emit!(world, GameState { game_state: 'Escaped' });
+                return ();
             }
 
             set!(world, (game,));
 
             emit!(world, GameState { game_state: 'Wrong Secret' });
+
         }
     }
 }

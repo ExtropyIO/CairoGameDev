@@ -16,13 +16,13 @@ opt-level = 3
 [dependencies]
 bevy = {version = "0.11.3", features = ["dynamic_linking"]}
 bevy_asset_loader = {version = "0.17.0", features = ["2d"]}
-starknet = "0.4.0"
+starknet = "0.6.0"
 bevy-inspector-egui = "0.20"
 bevy_pancam = "0.9.0"
 bevy_prototype_debug_lines = "0.11.1"
 bevy_rapier2d = "0.22.0"
 bevy-tokio-tasks = "0.11"
-dojo-client = { git = "https://github.com/dojoengine/dojo", rev = "187a12e74ad1020d76a86a59315b55f9fb08891e" }
+dojo-world = { git = "https://github.com/dojoengine/dojo", tag = "v0.3.0", features = ["contracts"]}
 eyre = "0.6"
 num = "0.4"
 rand = "0.8.5"

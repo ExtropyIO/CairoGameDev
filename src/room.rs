@@ -1,6 +1,6 @@
 use crate::character::Player;
-use crate::dojo::GameUpdate;
 use crate::resources::InteractObjectState;
+use crate::resources::ObjectNameInteraction;
 use bevy::log;
 use bevy::prelude::*;
 use bevy::sprite::*;
@@ -10,7 +10,8 @@ pub struct SpawnRoom;
 
 impl Plugin for RoomPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup)
+        app.insert_resource(ObjectNameInteraction(String::from("")))
+            .add_systems(Startup, setup)
             .add_systems(Update, highlight_object);
     }
 }
@@ -38,7 +39,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Object {
             name: "Bookcase".to_string(),
         },
-        Name::new("Object"),
+        Name::new("Bookcase"),
     ));
 
     let texture = asset_server.load("object_cupboard.png");
@@ -56,7 +57,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Object {
             name: "Cupboard".to_string(),
         },
-        Name::new("Object"),
+        Name::new("Cupboard"),
     ));
 
     let texture = asset_server.load("object_door.png");
@@ -74,7 +75,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Object {
             name: "Door".to_string(),
         },
-        Name::new("Object"),
+        Name::new("Door"),
     ));
 
     let texture = asset_server.load("object_table.png");
@@ -92,7 +93,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Object {
             name: "Table".to_string(),
         },
-        Name::new("Object"),
+        Name::new("Table"),
     ));
 
     let texture = asset_server.load("object_window.png");
@@ -110,7 +111,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Object {
             name: "Window".to_string(),
         },
-        Name::new("Object"),
+        Name::new("Window"),
     ));
 
     let texture = asset_server.load("object_painting.png");
@@ -128,40 +129,44 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Object {
             name: "Painting".to_string(),
         },
-        Name::new("Object"),
+        Name::new("Painting"),
     ));
 }
 
 fn highlight_object(
     mut commands: Commands,
-    mut objects: Query<((Entity, &Transform), With<Object>)>,
+    mut objects: Query<((Entity, &Transform, &Handle<Image>, &Name), With<Object>)>,
     mut characters: Query<(&Transform, &Player)>,
+    assets: Res<Assets<Image>>,
     input: Res<Input<KeyCode>>,
     interact_object: Res<InteractObjectState>,
+    // mut object_name: ResMut<ObjectNameInteraction>,
 ) {
     let character_transform = characters.single_mut();
 
-    for ((object_entity, object_transform), mut object) in &mut objects {
-        let object_size = object_transform.scale.truncate();
+    for ((object_entity, object_transform, handle, obj_name), mut object) in &mut objects {
+        let image = assets.get(handle).unwrap();
+        let image_size = image.size();
 
-        // TODO: check the length is actual
-        let object_min = object_transform.translation.x - object_size.x;
-        let object_max = object_transform.translation.x + object_size.x;
+        let object_min = object_transform.translation.x - image_size.x * 0.25;
+        let object_max = object_transform.translation.x + image_size.x * 0.25;
 
         let character_x = character_transform.0.translation.x;
 
         if character_x > object_min && character_x < object_max {
             if input.just_pressed(KeyCode::E) {
+                // check if object is door:
+                if obj_name.to_string() == "Door" {
+                    println!("This is door");
+                }
+                println!("Interaction key: {}", obj_name.to_string());
+                // object_name.0 = obj_name.to_string();
+                println!("{}, {}", object_min, object_max);
                 println!("Interacted with the object.");
-                if let Err(e) = interact_object.try_send() {
+                if let Err(e) = interact_object.try_send(obj_name.to_string()) {
                     log::error!("Spawn players channel: {e}");
                 }
             }
-            // println!("Object is near player");
-            // println!("{}", object_min);
-            // println!("{}", object_max);
-            // object_entity.apply(value)
-            // commands.entity(object_entity).add(Color::WHITE);
         }
     }
 }

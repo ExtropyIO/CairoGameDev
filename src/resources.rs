@@ -5,6 +5,10 @@ use tokio::sync::mpsc;
 #[reflect(Resource)]
 pub struct MovesRemaining(pub f32);
 
+#[derive(Resource, Default, Reflect)]
+#[reflect(Resource)]
+pub struct ObjectNameInteraction(pub String);
+
 #[derive(Resource)]
 pub struct StartGameCommand(pub mpsc::Sender<()>);
 
@@ -15,20 +19,20 @@ impl StartGameCommand {
     }
 }
 
+// #[derive(Resource)]
+// pub struct InteractObjectState(pub mpsc::Sender<()>);
+
+// impl InteractObjectState {
+//     pub fn try_send(&self) -> Result<(), mpsc::error::TrySendError<()>> {
+//         self.0.try_send(())
+//     }
+// }
+
 #[derive(Resource)]
-pub struct InteractObjectState(pub mpsc::Sender<()>);
+pub struct InteractObjectState(pub mpsc::Sender<String>);
 
 impl InteractObjectState {
-    pub fn try_send(&self) -> Result<(), mpsc::error::TrySendError<()>> {
-        self.0.try_send(())
-    }
-}
-
-#[derive(Resource, Event)]
-pub struct CheckGame(pub mpsc::Sender<()>);
-
-impl CheckGame {
-    pub fn try_send(&self) -> Result<(), mpsc::error::TrySendError<()>> {
-        self.0.try_send(())
+    pub fn try_send(&self, data: String) -> Result<(), mpsc::error::TrySendError<String>> {
+        self.0.try_send(data)
     }
 }

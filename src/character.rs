@@ -1,7 +1,6 @@
-use bevy_inspector_egui::InspectorOptions;
-
-use crate::resources::*;
 use bevy::prelude::*;
+use bevy_inspector_egui::InspectorOptions;
+use tokio::sync::mpsc;
 
 pub struct CharacterPlugin;
 
@@ -12,6 +11,16 @@ impl Plugin for CharacterPlugin {
             .register_type::<Player>(); // for new types
     }
 }
+
+#[derive(Resource, Event)]
+pub struct CheckGame(pub mpsc::Sender<()>);
+
+impl CheckGame {
+    pub fn try_send(&self) -> Result<(), mpsc::error::TrySendError<()>> {
+        self.0.try_send(())
+    }
+}
+
 #[derive(Component, InspectorOptions, Default, Reflect)]
 #[reflect(Component)]
 pub struct Player {
@@ -76,7 +85,7 @@ fn character_movement(
     mut characters: Query<(&mut Transform, &Player)>,
     input: Res<Input<KeyCode>>,
     time: Res<Time>,
-    game_update: Res<CheckGame>,
+    // game_update: Res<CheckGame>,
 ) {
     for (mut transform, player) in &mut characters {
         let movement_amount = player.speed * time.delta_seconds();
@@ -89,10 +98,10 @@ fn character_movement(
             transform.translation.x += movement_amount;
             // set walking image
         }
-        if input.just_pressed(KeyCode::I) {
-            if let Err(e) = game_update.try_send() {
-                println!("Game Update channel: {e}");
-            }
-        }
+        // if input.just_pressed(KeyCode::I) {
+        //     if let Err(e) = game_update.try_send() {
+        //         println!("Game Update channel: {e}");
+        //     }
+        // }
     }
 }

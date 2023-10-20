@@ -1,21 +1,30 @@
+use crate::configs;
 use crate::resources::*;
-use crate::{configs, MovesRemaining};
-use bevy::ecs::event::{Event, Events};
-use bevy::ecs::system::SystemState;
+use bevy::ecs::event::Event;
+
 use bevy::log;
 use bevy::prelude::*;
 use bevy_tokio_tasks::{TokioTasksPlugin, TokioTasksRuntime};
-use dojo_client::contract::world::WorldContract;
-use starknet::accounts::SingleOwnerAccount;
-use starknet::core::types::{BlockId, BlockTag, FieldElement};
+
 use starknet::core::utils::cairo_short_string_to_felt;
 use starknet::providers::jsonrpc::HttpTransport;
 use starknet::providers::JsonRpcClient;
-use starknet::signers::{LocalWallet, SigningKey};
+
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use url::Url;
+
+use starknet::{
+    accounts::{Account, Call, ExecutionEncoding, SingleOwnerAccount},
+    core::{
+        chain_id,
+        types::{BlockId, BlockTag, FieldElement},
+        utils::get_selector_from_name,
+    },
+    providers::SequencerGatewayProvider,
+    signers::{LocalWallet, SigningKey},
+};
 
 #[derive(Component)]
 pub struct GameData {
@@ -69,6 +78,7 @@ impl Plugin for DojoPlugin {
             )),
             account_address,
             cairo_short_string_to_felt("KATANA").unwrap(),
+            ExecutionEncoding::Legacy,
         );
 
         let world_address = FieldElement::from_str(configs::WORLD_ADDRESS).unwrap();
@@ -76,22 +86,15 @@ impl Plugin for DojoPlugin {
         // creating world and adding systems
         app.add_plugins(TokioTasksPlugin::default())
             // add events
-            .add_event::<GameUpdate>()
-            .add_event::<CheckGame>()
             // resources
             .insert_resource(DojoEnv::new(world_address, account))
             // starting system
             .add_systems(
                 Startup,
-                (
-                    setup,
-                    spawn_object_thread,
-                    interact_object_thread,
-                    fetch_component,
-                ),
+                (setup, spawn_object_thread, interact_object_thread),
             )
             // update systems
-            .add_systems(Update, (sync_dojo_state, check_game_update));
+            .add_systems(Update, sync_dojo_state);
     }
 }
 
@@ -146,18 +149,18 @@ fn spawn_object_thread(
     commands.insert_resource(StartGameCommand(tx));
 
     let account = env.account.clone();
-    let world_address = env.world_address;
-    let block_id = env.block_id;
 
     let turns_remaining: u64 = 10;
 
     runtime.spawn_background_task(move |mut ctx| async move {
-        let world = WorldContract::new(world_address, account.as_ref());
-        let start_game_system = world.system("spawn", block_id).await.unwrap();
-
         while let Some(_) = rx.recv().await {
-            match start_game_system
-                .execute(vec![turns_remaining.into()])
+            match account
+                .execute(vec![Call {
+                    to: FieldElement::from_hex_be(configs::ACTIONS_ADDRESS).unwrap(),
+                    selector: get_selector_from_name("spawn").unwrap(),
+                    calldata: vec![turns_remaining.into()],
+                }])
+                .send()
                 .await
             {
                 Ok(_) => {
@@ -179,100 +182,43 @@ fn interact_object_thread(
     env: Res<DojoEnv>,
     runtime: ResMut<TokioTasksRuntime>,
     mut commands: Commands,
+    interacted_object: Res<ObjectNameInteraction>,
 ) {
-    let (tx, mut rx) = mpsc::channel::<()>(8);
+    let (tx, mut rx) = mpsc::channel::<String>(8);
     commands.insert_resource(InteractObjectState(tx));
 
     let account = env.account.clone();
-    let world_address = env.world_address;
-    let block_id = env.block_id;
-
-    let game_id: u32 = 1;
+    let mut object_id: FieldElement = FieldElement::from_str("").unwrap();
 
     runtime.spawn_background_task(move |mut ctx| async move {
-        let world = WorldContract::new(world_address, account.as_ref());
-        let interact_system = world.system("interact", block_id).await.unwrap();
-
-        while let Some(_) = rx.recv().await {
-            println!("Interact System - Triggered");
-            match interact_system
-                .execute(vec![
-                    game_id.into(),
-                    FieldElement::from_str("0x5061696e74696e67").unwrap(), // object to interact with
-                ])
+        while let Some(data) = rx.recv().await {
+            println!("{}", data);
+            match FieldElement::from_str(&data.clone()) {
+                Ok(result) => {
+                    object_id = result;
+                }
+                Err(_) => {}
+            }
+            match account
+                .execute(vec![Call {
+                    to: FieldElement::from_hex_be(configs::ACTIONS_ADDRESS).unwrap(),
+                    selector: get_selector_from_name("interact").unwrap(),
+                    calldata: vec![object_id],
+                }])
+                .send()
                 .await
             {
                 Ok(data) => {
                     ctx.run_on_main_thread(move |_ctx| {
-                        println!("Object interacted");
-                        println!("{}", data.transaction_hash);
+                        println!("Interaction with {}.", data.transaction_hash);
                     })
                     .await;
                 }
                 Err(e) => {
-                    log::error!("Run spawn_object system: {e}");
+                    log::error!("Run create system: {e}");
                     println!("Error {}", e);
                 }
             }
         }
-        println!("Start Dojo Loop");
     });
-}
-
-fn fetch_component(env: Res<DojoEnv>, runtime: ResMut<TokioTasksRuntime>, mut commands: Commands) {
-    let (tx, mut rx) = mpsc::channel::<()>(16);
-
-    commands.insert_resource(CheckGame(tx));
-
-    let account = env.account.clone();
-    let world_address = env.world_address;
-    let block_id = env.block_id;
-    let player = FieldElement::from_str(configs::ACCOUNT_ADDRESS).unwrap();
-
-    runtime.spawn_background_task(move |mut ctx| async move {
-        let world = WorldContract::new(world_address, account.as_ref());
-
-        let game_component = world.component("Game", block_id).await.unwrap();
-
-        while let Some(_) = rx.recv().await {
-            match game_component
-                .entity(FieldElement::ZERO, vec![player], block_id)
-                .await
-            {
-                Ok(update) => {
-                    ctx.run_on_main_thread(move |ctx| {
-                        println!("getting the component game");
-                        // Create a new system state for an event writer associated with game updates.
-                        let mut state: SystemState<EventWriter<GameUpdate>> =
-                            SystemState::new(ctx.world);
-
-                        // Retrieve a mutable reference to the event writer.
-                        let mut update_game: EventWriter<'_, GameUpdate> = state.get_mut(ctx.world);
-
-                        // Use the event writer to send a new game update event.
-                        update_game.send(GameUpdate {
-                            game_update: update,
-                        })
-                    })
-                    .await;
-                }
-
-                Err(e) => {
-                    log::error!("Query `Game` component: {e}");
-                }
-            }
-        }
-    });
-}
-
-// this is the function that reads the event from above
-fn check_game_update(
-    mut events: EventReader<GameUpdate>, //gets an event call
-    mut query: Query<&mut Game>,
-) {
-    for e in events.iter() {
-        //loop through every event
-        println!("Game Events Update:");
-        println!("{}", e.game_update[0]);
-    }
 }

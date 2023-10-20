@@ -4,9 +4,10 @@ use bevy::{
 use bevy_asset_loader::loading_state::LoadingStateAppExt;
 use bevy_inspector_egui::prelude::ReflectInspectorOptions;
 use bevy_inspector_egui::{egui::Key, quick::WorldInspectorPlugin, InspectorOptions};
+use game_demo::ObjectNameInteraction;
 use game_demo::{
-    character::CharacterPlugin, configs::*, dojo::DojoPlugin, resources::MovesRemaining,
-    room::RoomPlugin, ui::GameUI,
+    character::CharacterPlugin, configs::*, dojo::DojoPlugin, resources::*, room::RoomPlugin,
+    ui::GameUI,
 };
 
 fn main() {
@@ -27,13 +28,13 @@ fn main() {
         )
         .insert_resource(MovesRemaining(10.0))
         .register_type::<MovesRemaining>()
-        .add_plugins(DojoPlugin)
         .add_plugins(
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
         )
         .add_plugins(GameUI)
         .add_plugins(CharacterPlugin)
         .add_plugins(RoomPlugin)
+        .add_plugins(DojoPlugin)
         .add_systems(Startup, setup)
         .run();
 }
