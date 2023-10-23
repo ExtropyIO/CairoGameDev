@@ -1,10 +1,12 @@
 use crate::configs;
 use crate::resources::*;
+
 use bevy::ecs::event::Event;
 
 use bevy::log;
 use bevy::prelude::*;
 use bevy_tokio_tasks::{TokioTasksPlugin, TokioTasksRuntime};
+use dojo_world::contracts::WorldContractReader;
 
 use starknet::core::utils::cairo_short_string_to_felt;
 use starknet::providers::jsonrpc::HttpTransport;
@@ -12,17 +14,16 @@ use starknet::providers::JsonRpcClient;
 
 use std::str::FromStr;
 use std::sync::Arc;
+
 use tokio::sync::mpsc;
 use url::Url;
 
 use starknet::{
     accounts::{Account, Call, ExecutionEncoding, SingleOwnerAccount},
     core::{
-        chain_id,
         types::{BlockId, BlockTag, FieldElement},
         utils::get_selector_from_name,
     },
-    providers::SequencerGatewayProvider,
     signers::{LocalWallet, SigningKey},
 };
 
@@ -49,6 +50,7 @@ pub struct DojoEnv {
     world_address: FieldElement,
     // account to use for performing execution on the world contract
     account: Arc<SingleOwnerAccount<JsonRpcClient<HttpTransport>, LocalWallet>>,
+    provider: JsonRpcClient<HttpTransport>,
 }
 
 impl DojoEnv {
@@ -60,6 +62,9 @@ impl DojoEnv {
             world_address,
             account: Arc::new(account),
             block_id: BlockId::Tag(BlockTag::Latest),
+            provider: JsonRpcClient::new(HttpTransport::new(
+                Url::parse(configs::JSON_RPC_ENDPOINT).unwrap(),
+            )),
         }
     }
 }
@@ -86,12 +91,18 @@ impl Plugin for DojoPlugin {
         // creating world and adding systems
         app.add_plugins(TokioTasksPlugin::default())
             // add events
+            .add_event::<GameUpdate>()
             // resources
             .insert_resource(DojoEnv::new(world_address, account))
             // starting system
             .add_systems(
                 Startup,
-                (setup, spawn_object_thread, interact_object_thread),
+                (
+                    setup,
+                    spawn_object_thread,
+                    interact_object_thread,
+                    escape_game,
+                ),
             )
             // update systems
             .add_systems(Update, sync_dojo_state);
@@ -120,6 +131,7 @@ fn sync_dojo_state(
     mut dojo_sync_time: Query<&mut DojoSyncTime>,
     time: Res<Time>,
     spawn_room: Res<StartGameCommand>,
+
     mut game: Query<&mut GameData>,
 ) {
     let mut dojo_time = dojo_sync_time.single_mut();
@@ -133,6 +145,7 @@ fn sync_dojo_state(
             if let Err(e) = spawn_room.try_send() {
                 log::error!("Spawn room channel: {e}");
             }
+
             game_state.started = true;
         }
     } else {
@@ -182,23 +195,16 @@ fn interact_object_thread(
     env: Res<DojoEnv>,
     runtime: ResMut<TokioTasksRuntime>,
     mut commands: Commands,
-    interacted_object: Res<ObjectNameInteraction>,
 ) {
     let (tx, mut rx) = mpsc::channel::<String>(8);
     commands.insert_resource(InteractObjectState(tx));
 
     let account = env.account.clone();
-    let mut object_id: FieldElement = FieldElement::from_str("").unwrap();
+    let world_address = env.world_address.clone();
 
     runtime.spawn_background_task(move |mut ctx| async move {
         while let Some(data) = rx.recv().await {
-            println!("{}", data);
-            match FieldElement::from_str(&data.clone()) {
-                Ok(result) => {
-                    object_id = result;
-                }
-                Err(_) => {}
-            }
+            let object_id = cairo_short_string_to_felt(&data).unwrap();
             match account
                 .execute(vec![Call {
                     to: FieldElement::from_hex_be(configs::ACTIONS_ADDRESS).unwrap(),
@@ -208,9 +214,68 @@ fn interact_object_thread(
                 .send()
                 .await
             {
-                Ok(data) => {
+                Ok(tx) => {
                     ctx.run_on_main_thread(move |_ctx| {
-                        println!("Interaction with {}.", data.transaction_hash);
+                        println!("Interaction with {}.", tx.transaction_hash);
+                    })
+                    .await;
+
+                    tokio::spawn(async move {
+                        fetch_schema(world_address, object_id).await;
+                    });
+                }
+                Err(e) => {
+                    log::error!("Run create system: {e}");
+                    println!("Error {}", e);
+                }
+            }
+        }
+    });
+}
+
+async fn fetch_schema(world_address: FieldElement, object_id: FieldElement) {
+    let provider = JsonRpcClient::new(HttpTransport::new(
+        Url::parse(configs::JSON_RPC_ENDPOINT).unwrap(),
+    ));
+    let world = WorldContractReader::new(world_address, provider);
+    let position = world.model("Object").await.unwrap();
+
+    let object_id_slice = &[
+        FieldElement::from_hex_be(configs::ACCOUNT_ADDRESS).unwrap(),
+        object_id,
+    ];
+
+    dbg!(object_id_slice);
+
+    match position.entity(object_id_slice).await {
+        Ok(data) => {
+            println!("{}", data);
+        }
+        Err(_) => {}
+    }
+}
+
+fn escape_game(env: Res<DojoEnv>, runtime: ResMut<TokioTasksRuntime>, mut commands: Commands) {
+    let (tx, mut rx) = mpsc::channel::<String>(8);
+    commands.insert_resource(EscapeState(tx));
+
+    let account = env.account.clone();
+
+    runtime.spawn_background_task(move |mut ctx| async move {
+        while let Some(data) = rx.recv().await {
+            let secret = cairo_short_string_to_felt(&data).unwrap();
+            match account
+                .execute(vec![Call {
+                    to: FieldElement::from_hex_be(configs::ACTIONS_ADDRESS).unwrap(),
+                    selector: get_selector_from_name("escape").unwrap(),
+                    calldata: vec![secret],
+                }])
+                .send()
+                .await
+            {
+                Ok(tx) => {
+                    ctx.run_on_main_thread(move |_ctx| {
+                        println!("Trying to escape at hash {}.", tx.transaction_hash);
                     })
                     .await;
                 }

@@ -1,10 +1,10 @@
 use crate::character::Player;
-use crate::resources::InteractObjectState;
-use crate::resources::ObjectNameInteraction;
+use crate::resources::*;
 use bevy::log;
 use bevy::prelude::*;
 use bevy::sprite::*;
 use bevy_inspector_egui::InspectorOptions;
+
 pub struct RoomPlugin;
 pub struct SpawnRoom;
 
@@ -129,7 +129,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Object {
             name: "Painting".to_string(),
         },
-        Name::new("Painting"),
+        Name::new("painting"),
     ));
 }
 
@@ -140,14 +140,19 @@ fn highlight_object(
     assets: Res<Assets<Image>>,
     input: Res<Input<KeyCode>>,
     interact_object: Res<InteractObjectState>,
-    // mut object_name: ResMut<ObjectNameInteraction>,
+    escape_action: Res<EscapeState>,
+    mut evr_char: EventReader<ReceivedCharacter>,
+    kbd: Res<Input<KeyCode>>,
+    mut string: Local<String>,
 ) {
     let character_transform = characters.single_mut();
 
     for ((object_entity, object_transform, handle, obj_name), mut object) in &mut objects {
-        let image = assets.get(handle).unwrap();
-        let image_size = image.size();
-
+        let image_size = assets
+            .get(handle)
+            .map(|result| result.size())
+            .unwrap_or(Vec2::new(0.0, 0.0));
+        // 0.25 because we divide x by 2 and then take the scale factor 0.5
         let object_min = object_transform.translation.x - image_size.x * 0.25;
         let object_max = object_transform.translation.x + image_size.x * 0.25;
 
@@ -155,18 +160,32 @@ fn highlight_object(
 
         if character_x > object_min && character_x < object_max {
             if input.just_pressed(KeyCode::E) {
-                // check if object is door:
                 if obj_name.to_string() == "Door" {
-                    println!("This is door");
+                    println!("The secret to open the door is: {}", &*string);
+                    if let Err(e) = escape_action.try_send(string.to_string()) {
+                        log::error!("Escpae state channel: {e}");
+                    }
+                    return;
                 }
-                println!("Interaction key: {}", obj_name.to_string());
-                // object_name.0 = obj_name.to_string();
-                println!("{}, {}", object_min, object_max);
-                println!("Interacted with the object.");
+
                 if let Err(e) = interact_object.try_send(obj_name.to_string()) {
-                    log::error!("Spawn players channel: {e}");
+                    log::error!("Interact object channel: {e}");
                 }
             }
+        }
+    }
+
+    if kbd.just_pressed(KeyCode::Return) {
+        println!("Text input: {}", &*string);
+        string.clear();
+    }
+    if kbd.just_pressed(KeyCode::Back) {
+        string.pop();
+    }
+    for ev in evr_char.iter() {
+        // ignore control (special) characters
+        if !ev.char.is_control() {
+            string.push(ev.char);
         }
     }
 }

@@ -1,6 +1,6 @@
 // DOJO Settings
 pub const JSON_RPC_ENDPOINT: &str = "http://0.0.0.0:5050";
-
+pub const JSON_RPC_ENDPOINT_FEEDER: &str = "http://0.0.0.0:5050/feeder";
 // katana account 0
 pub const ACCOUNT_ADDRESS: &str =
     "0x517ececd29116499f4a1b64b094da79ba08dfd54a3edaa316134c41f8160973";

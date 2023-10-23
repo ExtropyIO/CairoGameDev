@@ -54,19 +54,19 @@ mod actions {
                     },
                     Object {
                         player: player,
-                        object_id: 'Foto',
+                        object_id: 'Cupboard',
                         game_id: game_id,
                         description: 'An egyptian cat.',
                     },
                     Object {
                         player: player,
-                        object_id: 'Strange Amulet',
+                        object_id: 'Table',
                         game_id: game_id,
-                        description: 'Until tomorrow',
+                        description: 'Pile of papers',
                     },
                     Object {
                         player: player,
-                        object_id: 'Book',
+                        object_id: 'Bookcase',
                         game_id: game_id,
                         description: '1984',
                     },
@@ -116,7 +116,7 @@ mod actions {
 
             let mut game = get!(world, player, (Game));
 
-            assert(game.tick(), 'Cannot Progress');
+            // assert(game.tick(), 'Cannot Progress');
 
             if game.turns_remaining == 0 {
                 emit!(world, GameState { game_state: 'Game Over' });
@@ -125,7 +125,7 @@ mod actions {
                 game.turns_remaining -= 1;
             }
 
-            let door = get!(world, player, (Door));
+            let door = get!(world, (game.game_id, player).into(), Door);
 
             if door.secret == secret {
                 game.is_finished = true;
