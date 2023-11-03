@@ -35,3 +35,15 @@ impl InteractObjectState {
         self.0.try_send(data)
     }
 }
+
+#[derive(Resource)]
+pub struct SpawnObjectState(pub mpsc::Sender<(String, String)>);
+
+impl SpawnObjectState {
+    pub fn try_send(
+        &self,
+        data: (String, String),
+    ) -> Result<(), mpsc::error::TrySendError<(String, String)>> {
+        self.0.try_send(data)
+    }
+}

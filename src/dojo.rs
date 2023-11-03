@@ -1,20 +1,21 @@
 use crate::configs;
 use crate::resources::*;
+use bevy::{
+    ecs::{event::Event, system::SystemState},
+    log,
+    prelude::*,
+    tasks::{AsyncComputeTaskPool, Task},
+};
+use hex;
 
-use bevy::ecs::event::Event;
-
-use bevy::log;
-use bevy::prelude::*;
 use bevy_tokio_tasks::{TokioTasksPlugin, TokioTasksRuntime};
+use dojo_types::{primitive::Primitive, schema::Ty};
 use dojo_world::contracts::WorldContractReader;
 
-use starknet::core::utils::cairo_short_string_to_felt;
-use starknet::providers::jsonrpc::HttpTransport;
-use starknet::providers::JsonRpcClient;
-
-use std::str::FromStr;
-use std::sync::Arc;
-
+use futures_lite::future;
+use std::thread;
+use std::time::Duration;
+use std::{str::FromStr, sync::Arc};
 use tokio::sync::mpsc;
 use url::Url;
 
@@ -22,8 +23,10 @@ use starknet::{
     accounts::{Account, Call, ExecutionEncoding, SingleOwnerAccount},
     core::{
         types::{BlockId, BlockTag, FieldElement},
-        utils::get_selector_from_name,
+        utils::{cairo_short_string_to_felt, get_selector_from_name},
     },
+    providers::jsonrpc::HttpTransport,
+    providers::JsonRpcClient,
     signers::{LocalWallet, SigningKey},
 };
 
@@ -39,8 +42,12 @@ pub struct Game {
 
 #[derive(Event)]
 pub struct GameUpdate {
-    pub game_update: Vec<FieldElement>, // vector of field elements
+    pub game_update: Ty, // vector of field elements
 }
+
+#[derive(Event)]
+
+struct GameStatus(Ty);
 
 #[derive(Resource)]
 pub struct DojoEnv {
@@ -99,7 +106,7 @@ impl Plugin for DojoPlugin {
                 Startup,
                 (
                     setup,
-                    spawn_object_thread,
+                    initialise_world_thread,
                     interact_object_thread,
                     escape_game,
                 ),
@@ -153,7 +160,7 @@ fn sync_dojo_state(
     }
 }
 
-fn spawn_object_thread(
+fn initialise_world_thread(
     env: Res<DojoEnv>,
     runtime: ResMut<TokioTasksRuntime>,
     mut commands: Commands,
@@ -170,8 +177,49 @@ fn spawn_object_thread(
             match account
                 .execute(vec![Call {
                     to: FieldElement::from_hex_be(configs::ACTIONS_ADDRESS).unwrap(),
-                    selector: get_selector_from_name("spawn").unwrap(),
+                    selector: get_selector_from_name("initialise").unwrap(),
                     calldata: vec![turns_remaining.into()],
+                }])
+                .send()
+                .await
+            {
+                Ok(_) => {
+                    ctx.run_on_main_thread(move |_ctx| {
+                        println!("Game Initialized.");
+                    })
+                    .await;
+                }
+                Err(e) => {
+                    log::error!("Run create system: {e}");
+                    println!("Error {}", e);
+                }
+            }
+        }
+    });
+}
+
+fn spawn_object_thread(
+    env: Res<DojoEnv>,
+    runtime: ResMut<TokioTasksRuntime>,
+    mut commands: Commands,
+) {
+    let (tx, mut rx) = mpsc::channel::<(String, String)>(8);
+    commands.insert_resource(SpawnObjectState(tx));
+
+    let account = env.account.clone();
+
+    let turns_remaining: u64 = 10;
+
+    runtime.spawn_background_task(move |mut ctx| async move {
+        while let Some((name, description)) = rx.recv().await {
+            match account
+                .execute(vec![Call {
+                    to: FieldElement::from_hex_be(configs::ACTIONS_ADDRESS).unwrap(),
+                    selector: get_selector_from_name("spawn_object").unwrap(),
+                    calldata: vec![
+                        cairo_short_string_to_felt(&name).unwrap(),
+                        cairo_short_string_to_felt(&description).unwrap(),
+                    ],
                 }])
                 .send()
                 .await
@@ -221,7 +269,34 @@ fn interact_object_thread(
                     .await;
 
                     tokio::spawn(async move {
-                        fetch_schema(world_address, object_id).await;
+                        thread::sleep(Duration::from_millis(250));
+                        let schema =
+                            fetch_schema(world_address, object_id, String::from("Object")).await;
+                        if let Ty::Struct(struct_ty) = schema {
+                            for child in struct_ty.children {
+                                if child.name == "description" {
+                                    println!("{} - {}", data, child.name);
+                                    if let Ty::Primitive(Primitive::Felt252(Some(felt))) = child.ty
+                                    {
+                                        println!("{}", FieldElement::to_hex(felt));
+                                    }
+                                }
+                            }
+                        }
+
+                        let schema =
+                            fetch_schema(world_address, object_id, String::from("Game")).await;
+                        if let Ty::Struct(struct_ty) = schema {
+                            for child in struct_ty.children {
+                                if child.name == "turns_remaining" {
+                                    println!("{}", child.name);
+                                    if let Ty::Primitive(Primitive::U64(Some(felt))) = child.ty {
+                                        println!("{}", felt);
+                                        println!("-----------");
+                                    }
+                                }
+                            }
+                        }
                     });
                 }
                 Err(e) => {
@@ -233,26 +308,24 @@ fn interact_object_thread(
     });
 }
 
-async fn fetch_schema(world_address: FieldElement, object_id: FieldElement) {
+async fn fetch_schema(world_address: FieldElement, object_id: FieldElement, model: String) -> Ty {
     let provider = JsonRpcClient::new(HttpTransport::new(
         Url::parse(configs::JSON_RPC_ENDPOINT).unwrap(),
     ));
     let world = WorldContractReader::new(world_address, provider);
-    let position = world.model("Object").await.unwrap();
+    let position = world.model(&model).await.unwrap();
 
+    if model == "Game" {
+        let object_id_slice = &[FieldElement::from_hex_be(configs::ACCOUNT_ADDRESS).unwrap()];
+
+        return position.entity(object_id_slice).await.unwrap();
+    }
     let object_id_slice = &[
         FieldElement::from_hex_be(configs::ACCOUNT_ADDRESS).unwrap(),
         object_id,
     ];
 
-    dbg!(object_id_slice);
-
-    match position.entity(object_id_slice).await {
-        Ok(data) => {
-            println!("{}", data);
-        }
-        Err(_) => {}
-    }
+    position.entity(object_id_slice).await.unwrap()
 }
 
 fn escape_game(env: Res<DojoEnv>, runtime: ResMut<TokioTasksRuntime>, mut commands: Commands) {
@@ -260,7 +333,8 @@ fn escape_game(env: Res<DojoEnv>, runtime: ResMut<TokioTasksRuntime>, mut comman
     commands.insert_resource(EscapeState(tx));
 
     let account = env.account.clone();
-
+    let world_address = env.world_address.clone();
+    let object_id = cairo_short_string_to_felt("dummy").unwrap();
     runtime.spawn_background_task(move |mut ctx| async move {
         while let Some(data) = rx.recv().await {
             let secret = cairo_short_string_to_felt(&data).unwrap();
@@ -278,6 +352,25 @@ fn escape_game(env: Res<DojoEnv>, runtime: ResMut<TokioTasksRuntime>, mut comman
                         println!("Trying to escape at hash {}.", tx.transaction_hash);
                     })
                     .await;
+                    tokio::spawn(async move {
+                        thread::sleep(Duration::from_millis(250));
+                        let schema =
+                            fetch_schema(world_address, object_id, String::from("Game")).await;
+                        if let Ty::Struct(struct_ty) = schema {
+                            for child in struct_ty.children {
+                                if child.name == "turns_remaining" || child.name == "is_finished" {
+                                    println!("{}", child.name);
+                                    if let Ty::Primitive(Primitive::U64(Some(felt))) = child.ty {
+                                        println!("{}", felt);
+                                    } else if let Ty::Primitive(Primitive::Bool(Some(value))) =
+                                        child.ty
+                                    {
+                                        println!("{}", value);
+                                    }
+                                }
+                            }
+                        }
+                    });
                 }
                 Err(e) => {
                     log::error!("Run create system: {e}");
@@ -286,4 +379,12 @@ fn escape_game(env: Res<DojoEnv>, runtime: ResMut<TokioTasksRuntime>, mut comman
             }
         }
     });
+}
+trait ToHex {
+    fn to_hex(self) -> String;
+}
+impl ToHex for FieldElement {
+    fn to_hex(self) -> String {
+        format!("{:#x}", self)
+    }
 }

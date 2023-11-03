@@ -4,10 +4,10 @@ use starknet::{ContractAddress, ClassHash};
 
 #[starknet::interface]
 trait IActions<TContractState> {
-    fn spawn(self: @TContractState, turns_remaining: u64);
+    fn initialise(self: @TContractState, turns_remaining: u64);
+    fn spawn_object(self: @TContractState, object_id: felt252, object_description: felt252);
     fn interact(self: @TContractState, object_id: felt252);
     fn escape(self: @TContractState, secret: felt252);
-    fn test(self: @TContractState);
 }
 
 #[dojo::contract]
@@ -21,10 +21,7 @@ mod actions {
     // impl: implement functions specified in trait
     #[external(v0)]
     impl ActionsImpl of IActions<ContractState> {
-        fn test(self:@ContractState) {
-            let world = self.world_dispatcher.read();
-        }
-        fn spawn(self: @ContractState, turns_remaining: u64) {
+        fn initialise(self: @ContractState, turns_remaining: u64) {
             // Access the world dispatcher for reading.
             let world = self.world_dispatcher.read();
 
@@ -43,37 +40,30 @@ mod actions {
 
             set!(world, (game, door));
 
-            set!(
+            emit!(world, GameState { game_state: 'Game Initialized' });
+        }
+
+        fn spawn_object(self: @ContractState, object_id: felt252, object_description: felt252) {
+             
+            let world = self.world_dispatcher.read();
+            let player = get_caller_address();
+            let game = get!(world, player, (Game));
+            // let game_id = world.uuid();
+
+             set!(
                 world,
                 (
                     Object {
                         player: player,
-                        object_id: 'Painting',
-                        game_id: game_id,
-                        description: 'An intriguing painting.',
+                        object_id: object_id,
+                        game_id: game.game_id,
+                        description: object_description,
                     },
-                    Object {
-                        player: player,
-                        object_id: 'Cupboard',
-                        game_id: game_id,
-                        description: 'An egyptian cat.',
-                    },
-                    Object {
-                        player: player,
-                        object_id: 'Table',
-                        game_id: game_id,
-                        description: 'Pile of papers',
-                    },
-                    Object {
-                        player: player,
-                        object_id: 'Bookcase',
-                        game_id: game_id,
-                        description: '1984',
-                    },
+  
                 )
             );
-
-            emit!(world, GameState { game_state: 'Game Initialized' });
+            // TODO: Create Object Spawn event
+            // emit!(world, GameState { game_state: 'Game Initialized' });
         }
 
         fn interact(self: @ContractState, object_id: felt252)  {

@@ -4,7 +4,6 @@ use bevy::{
 use bevy_asset_loader::loading_state::LoadingStateAppExt;
 use bevy_inspector_egui::prelude::ReflectInspectorOptions;
 use bevy_inspector_egui::{egui::Key, quick::WorldInspectorPlugin, InspectorOptions};
-use game_demo::ObjectNameInteraction;
 use game_demo::{
     character::CharacterPlugin, configs::*, dojo::DojoPlugin, resources::*, room::RoomPlugin,
     ui::GameUI,

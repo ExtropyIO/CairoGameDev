@@ -1,8 +1,6 @@
 use crate::character::Player;
 use crate::resources::*;
-use bevy::log;
-use bevy::prelude::*;
-use bevy::sprite::*;
+use bevy::{log, prelude::*, sprite::*};
 use bevy_inspector_egui::InspectorOptions;
 
 pub struct RoomPlugin;
@@ -21,116 +19,82 @@ pub struct Object {
     pub name: String,
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    // loading the asset
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    spawn_object: Res<SpawnObjectState>,
+) {
+    // loading the assets
+    // TODO: Load it as a SpriteBundle
+    let bookcase_texture = asset_server.load("object_bookcase.png");
+    let cupboard_texture = asset_server.load("object_cupboard.png");
+    let door_texture = asset_server.load("object_door.png");
+    let table_texture = asset_server.load("object_table.png");
+    let window_texture = asset_server.load("object_window.png");
+    let painting_texture = asset_server.load("object_painting.png");
 
-    let texture = asset_server.load("object_bookcase.png");
+    // create a vector of tuples containing the texture and the transform for each object
+    let objects = vec![
+        (
+            bookcase_texture,
+            Transform::from_xyz(-40.0, -40.0, 0.0),
+            "Bookcase",
+            "A strange book, 1984",
+        ),
+        (
+            cupboard_texture,
+            Transform::from_xyz(35.0, -40.0, 0.0),
+            "Cupboard",
+            "An egyptian cat.",
+        ),
+        (door_texture, Transform::from_xyz(125.0, -40.0, 0.0), "Door"),
+        (
+            table_texture,
+            Transform::from_xyz(-110.0, -40.0, 0.0),
+            "Table",
+            "Pile of papers.",
+        ),
+        (
+            window_texture,
+            Transform::from_xyz(80.0, -12.50, 0.0),
+            "Window",
+            "Raining outside...",
+        ),
+        (
+            painting_texture,
+            Transform::from_xyz(4.0, -12.50, 0.0),
+            "Painting",
+            "An intriguing painting.",
+        ),
+    ];
 
-    commands.spawn((
-        SpriteBundle {
-            transform: Transform::from_xyz(-40.0, -40.0, 0.0).with_scale(Vec3::splat(0.5)),
-            texture,
-            sprite: Sprite {
-                anchor: Anchor::BottomCenter,
+    // spawn a batch of entities with the same components
+    commands.spawn_batch(objects.into_iter().map(|(texture, transform, name, _)| {
+        (
+            SpriteBundle {
+                transform: transform.with_scale(Vec3::splat(0.5)),
+                texture,
+                sprite: Sprite {
+                    anchor: Anchor::BottomCenter,
+                    ..default()
+                },
                 ..default()
             },
-            ..default()
-        },
-        Object {
-            name: "Bookcase".to_string(),
-        },
-        Name::new("Bookcase"),
-    ));
-
-    let texture = asset_server.load("object_cupboard.png");
-
-    commands.spawn((
-        SpriteBundle {
-            transform: Transform::from_xyz(35.0, -40.0, 0.0).with_scale(Vec3::splat(0.5)),
-            texture,
-            sprite: Sprite {
-                anchor: Anchor::BottomCenter,
-                ..default()
+            Object {
+                name: name.to_string(),
             },
-            ..default()
-        },
-        Object {
-            name: "Cupboard".to_string(),
-        },
-        Name::new("Cupboard"),
-    ));
+            Name::new(name),
+        )
+    }));
 
-    let texture = asset_server.load("object_door.png");
-
-    commands.spawn((
-        SpriteBundle {
-            transform: Transform::from_xyz(125.0, -40.0, 0.0).with_scale(Vec3::splat(0.5)),
-            texture,
-            sprite: Sprite {
-                anchor: Anchor::BottomCenter,
-                ..default()
-            },
-            ..default()
-        },
-        Object {
-            name: "Door".to_string(),
-        },
-        Name::new("Door"),
-    ));
-
-    let texture = asset_server.load("object_table.png");
-
-    commands.spawn((
-        SpriteBundle {
-            transform: Transform::from_xyz(-110.0, -40.0, 0.0).with_scale(Vec3::splat(0.5)),
-            texture,
-            sprite: Sprite {
-                anchor: Anchor::BottomCenter,
-                ..default()
-            },
-            ..default()
-        },
-        Object {
-            name: "Table".to_string(),
-        },
-        Name::new("Table"),
-    ));
-
-    let texture = asset_server.load("object_window.png");
-
-    commands.spawn((
-        SpriteBundle {
-            transform: Transform::from_xyz(80.0, -12.50, 0.0).with_scale(Vec3::splat(0.5)),
-            texture,
-            sprite: Sprite {
-                anchor: Anchor::BottomCenter,
-                ..default()
-            },
-            ..default()
-        },
-        Object {
-            name: "Window".to_string(),
-        },
-        Name::new("Window"),
-    ));
-
-    let texture = asset_server.load("object_painting.png");
-
-    commands.spawn((
-        SpriteBundle {
-            transform: Transform::from_xyz(4.0, -12.50, 0.0).with_scale(Vec3::splat(0.5)),
-            texture,
-            sprite: Sprite {
-                anchor: Anchor::BottomCenter,
-                ..default()
-            },
-            ..default()
-        },
-        Object {
-            name: "Painting".to_string(),
-        },
-        Name::new("painting"),
-    ));
+    // Spawn each object on the dojo side.
+    let mut iterator = objects.iter();
+    while let Some((_, _, name, description)) = iterator.next() {
+        // do something with texture, transform, and name
+        if let Err(e) = spawn_object.try_send((name.to_string(), description.to_string())) {
+            log::error!("Interact object channel: {e}");
+        }
+    }
 }
 
 fn highlight_object(

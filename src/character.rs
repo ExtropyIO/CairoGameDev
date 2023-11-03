@@ -85,7 +85,6 @@ fn character_movement(
     mut characters: Query<(&mut Transform, &Player)>,
     input: Res<Input<KeyCode>>,
     time: Res<Time>,
-    // game_update: Res<CheckGame>,
 ) {
     for (mut transform, player) in &mut characters {
         let movement_amount = player.speed * time.delta_seconds();
@@ -98,10 +97,5 @@ fn character_movement(
             transform.translation.x += movement_amount;
             // set walking image
         }
-        // if input.just_pressed(KeyCode::I) {
-        //     if let Err(e) = game_update.try_send() {
-        //         println!("Game Update channel: {e}");
-        //     }
-        // }
     }
 }

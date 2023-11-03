@@ -2375,8 +2375,8 @@ checksum = "bd0c93bb4b0c6d9b77f4435b0ae98c24d17f1c45b2ff844c6151a07256ca923b"
 
 [[package]]
 name = "dojo-types"
-version = "0.3.0"
-source = "git+https://github.com/dojoengine/dojo?tag=v0.3.0#3101ce88c8f6fb3e304aec7fe7db0bbf5c1434c5"
+version = "0.3.1"
+source = "git+https://github.com/dojoengine/dojo?tag=v0.3.1#4ae61b3fa8e39af9387f05af264e1c24865e971c"
 dependencies = [
  "crypto-bigint",
  "hex",
@@ -2391,8 +2391,8 @@ dependencies = [
 
 [[package]]
 name = "dojo-world"
-version = "0.3.0"
-source = "git+https://github.com/dojoengine/dojo?tag=v0.3.0#3101ce88c8f6fb3e304aec7fe7db0bbf5c1434c5"
+version = "0.3.1"
+source = "git+https://github.com/dojoengine/dojo?tag=v0.3.1#4ae61b3fa8e39af9387f05af264e1c24865e971c"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2859,8 +2859,11 @@ dependencies = [
  "bevy_pancam",
  "bevy_prototype_debug_lines",
  "bevy_rapier2d",
+ "dojo-types",
  "dojo-world",
  "eyre",
+ "futures-lite",
+ "hex",
  "num",
  "rand",
  "serde",
