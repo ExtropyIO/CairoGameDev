@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::InspectorOptions;
-use tokio::sync::mpsc;
 
 pub struct CharacterPlugin;
 
@@ -9,15 +8,6 @@ impl Plugin for CharacterPlugin {
         app.add_systems(Startup, setup)
             .add_systems(Update, (animate_sprite, character_movement))
             .register_type::<Player>(); // for new types
-    }
-}
-
-#[derive(Resource, Event)]
-pub struct CheckGame(pub mpsc::Sender<()>);
-
-impl CheckGame {
-    pub fn try_send(&self) -> Result<(), mpsc::error::TrySendError<()>> {
-        self.0.try_send(())
     }
 }
 
