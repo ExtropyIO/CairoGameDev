@@ -1,12 +1,9 @@
 use bevy::{
     input::common_conditions::input_toggle_active, prelude::*, render::camera::ScalingMode,
 };
-use bevy_asset_loader::loading_state::LoadingStateAppExt;
-use bevy_inspector_egui::prelude::ReflectInspectorOptions;
-use bevy_inspector_egui::{egui::Key, quick::WorldInspectorPlugin, InspectorOptions};
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use game_demo::{
-    character::CharacterPlugin, configs::*, dojo_new::DojoPlugin, resources::*, room::RoomPlugin,
-    ui::GameUI,
+    character::CharacterPlugin, dojo::DojoPlugin, resources::*, room::RoomPlugin, ui::GameUI,
 };
 
 fn main() {
@@ -25,7 +22,7 @@ fn main() {
                 })
                 .build(),
         )
-        .insert_resource(MovesRemaining(10.0))
+        .insert_resource(MovesRemaining(10))
         .register_type::<MovesRemaining>()
         .add_plugins(
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),

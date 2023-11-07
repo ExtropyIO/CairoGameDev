@@ -7,9 +7,9 @@ pub const ACCOUNT_ADDRESS: &str =
 pub const ACCOUNT_SECRET_KEY: &str = "0x1800000000300000180000000000030000000000003006001800006600";
 
 // world
-pub const WORLD_ADDRESS: &str = "0x7bfc4dc34e5e8a3c7c29604134dbf6e0e9f133aa6431d1aa69d5f08164e67b6";
+pub const WORLD_ADDRESS: &str = "0x13dfc87155d415ae384a35ba4333dfe160645ad7c83dc8b5812bd7ade9d69d6";
 pub const ACTIONS_ADDRESS: &str =
-    "0xaf6ee37bd3016f3ee68bce8f0b9afb3124c20291bcc8d1efc21085f9a8bcbe";
+    "0x47c92218dfdaac465ad724f028f0f075b1c05c9ff9555d0e426c025e45c035";
 pub const DOJO_SYNC_INTERVAL: f32 = 1.0;
 
 // Game Settings
