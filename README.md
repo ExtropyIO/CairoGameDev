@@ -1,6 +1,10 @@
 # Room Escape - A Cairo Game
 
-// Description of the game
+You open your eyes and gasp. You are lying on a cold, hard floor in a dimly lit room. You have no idea where you are or how you got here. You look around and see a clutter of old furniture, books, and papers. The air is stale and dusty. The only exit is a metal door with a keypad and a red light. You get up and rush to the door, hoping to escape. You pull the handle, but it doesn't budge. It's locked. You hear a faint beep and notice a digital counter on the wall. It shows 60:00 and starts to count down. You feel a surge of panic. You need to find the code to unlock the door before the time runs out. But where is it hidden? You scan the room, looking for clues. You see a note on a table, a painting on the wall, a bookshelf, and a chest. You don't have much time. You need to act fast. What will you do?
+
+<p align="center">
+  <img src="roomescape.jpeg" alt="A strange room." />
+</p>
 
 ## Setup
 
@@ -55,3 +59,4 @@ Keyboard commands:
 - `A` - move left
 - `B` - move right
 - `E` - interact with the object
+- `Enter` - reset the pre-recorded keystrokes
